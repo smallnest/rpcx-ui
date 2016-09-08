@@ -63,10 +63,21 @@ func main() {
 }
 
 func servicesHandler(w http.ResponseWriter, r *http.Request) {
-	renderTemplate(w, r.URL.Path[1:]+".html", nil)
+	data := make(map[string]interface{})
+	data["services"] = []*Service{&Service{"1", "Service1", "Address1", "weight=1&state=active"},
+		&Service{"2", "Service2", "Address2", "weight=5&state=active"},
+		&Service{"3", "Service3", "Address3", "weight=2&state=inactive"}}
+	renderTemplate(w, r.URL.Path[1:]+".html", data)
 }
 
 func hostsHandler(w http.ResponseWriter, r *http.Request) {
 
 	renderTemplate(w, r.URL.Path[1:]+".html", nil)
+}
+
+type Service struct {
+	Id       string
+	Name     string
+	Address  string
+	Metadata string
 }
