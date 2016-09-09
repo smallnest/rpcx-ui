@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 var templates map[string]*template.Template
@@ -55,19 +58,44 @@ func main() {
 		http.Redirect(w, r, "/services", http.StatusFound)
 	})
 	http.HandleFunc("/services", servicesHandler)
+	http.HandleFunc("/s/deactivate/", deactivateHandler)
+	http.HandleFunc("/s/activate/", activateHandler)
 	http.HandleFunc("/hosts", hostsHandler)
 
 	fs := http.FileServer(http.Dir("web"))
 	http.Handle("/static", http.StripPrefix("/static/", fs))
-	http.ListenAndServe(":8972", nil)
+	http.ListenAndServe(serverConfig.Host+":"+strconv.Itoa(serverConfig.Port), nil)
 }
 
 func servicesHandler(w http.ResponseWriter, r *http.Request) {
 	data := make(map[string]interface{})
-	data["services"] = []*Service{&Service{"1", "Service1", "Address1", "weight=1&state=active"},
-		&Service{"2", "Service2", "Address2", "weight=5&state=active"},
-		&Service{"3", "Service3", "Address3", "weight=2&state=inactive"}}
+	data["services"] = reg.fetchServices()
 	renderTemplate(w, r.URL.Path[1:]+".html", data)
+}
+
+func deactivateHandler(w http.ResponseWriter, r *http.Request) {
+	//deactivate the service
+	i := strings.LastIndex(r.URL.Path, "/")
+	base64ID := r.URL.Path[i+1:]
+
+	if b, err := base64.StdEncoding.DecodeString(base64ID); err == nil {
+		// TODO
+		fmt.Println(string(b))
+	}
+	http.Redirect(w, r, "/services", http.StatusFound)
+}
+
+func activateHandler(w http.ResponseWriter, r *http.Request) {
+	//activate the service
+	i := strings.LastIndex(r.URL.Path, "/")
+	base64ID := r.URL.Path[i+1:]
+
+	if b, err := base64.StdEncoding.DecodeString(base64ID); err == nil {
+		// TODO
+		fmt.Println(string(b))
+	}
+
+	http.Redirect(w, r, "/services", http.StatusFound)
 }
 
 func hostsHandler(w http.ResponseWriter, r *http.Request) {
@@ -75,9 +103,15 @@ func hostsHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r.URL.Path[1:]+".html", nil)
 }
 
+type Registry interface {
+	fetchServices() []*Service
+}
+
+// Service is a service endpoint
 type Service struct {
 	Id       string
 	Name     string
 	Address  string
 	Metadata string
+	State    string
 }
