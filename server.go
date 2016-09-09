@@ -60,10 +60,12 @@ func main() {
 	http.HandleFunc("/services", servicesHandler)
 	http.HandleFunc("/s/deactivate/", deactivateHandler)
 	http.HandleFunc("/s/activate/", activateHandler)
+	http.HandleFunc("/s/m/", modifyHandler)
 	http.HandleFunc("/hosts", hostsHandler)
 
 	fs := http.FileServer(http.Dir("web"))
-	http.Handle("/static", http.StripPrefix("/static/", fs))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
 	http.ListenAndServe(serverConfig.Host+":"+strconv.Itoa(serverConfig.Port), nil)
 }
 
@@ -74,25 +76,46 @@ func servicesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deactivateHandler(w http.ResponseWriter, r *http.Request) {
-	//deactivate the service
 	i := strings.LastIndex(r.URL.Path, "/")
 	base64ID := r.URL.Path[i+1:]
 
 	if b, err := base64.StdEncoding.DecodeString(base64ID); err == nil {
-		// TODO
-		fmt.Println(string(b))
+		s := string(b)
+		j := strings.Index(s, "@")
+		name := s[0:j]
+		address := s[j+1:]
+		reg.deactivateService(name, address)
 	}
 	http.Redirect(w, r, "/services", http.StatusFound)
 }
 
 func activateHandler(w http.ResponseWriter, r *http.Request) {
-	//activate the service
 	i := strings.LastIndex(r.URL.Path, "/")
 	base64ID := r.URL.Path[i+1:]
 
 	if b, err := base64.StdEncoding.DecodeString(base64ID); err == nil {
-		// TODO
-		fmt.Println(string(b))
+		s := string(b)
+		j := strings.Index(s, "@")
+		name := s[0:j]
+		address := s[j+1:]
+		reg.activateService(name, address)
+	}
+
+	http.Redirect(w, r, "/services", http.StatusFound)
+}
+
+func modifyHandler(w http.ResponseWriter, r *http.Request) {
+	metadata := r.URL.Query()
+
+	i := strings.LastIndex(r.URL.Path, "/")
+	base64ID := r.URL.Path[i+1:]
+
+	if b, err := base64.StdEncoding.DecodeString(base64ID); err == nil {
+		s := string(b)
+		j := strings.Index(s, "@")
+		name := s[0:j]
+		address := s[j+1:]
+		reg.updateMetadata(name, address, metadata.Encode())
 	}
 
 	http.Redirect(w, r, "/services", http.StatusFound)
@@ -104,7 +127,11 @@ func hostsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type Registry interface {
+	initRegistry()
 	fetchServices() []*Service
+	deactivateService(name, address string) error
+	activateService(name, address string) error
+	updateMetadata(name, address string, metadata string) error
 }
 
 // Service is a service endpoint

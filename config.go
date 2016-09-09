@@ -28,6 +28,11 @@ func loadConfig() {
 	if serverConfig.RegistryType == "zookeeper" {
 		reg = &ZooKeeperRegistry{}
 	}
+
+	if reg != nil {
+		reg.initRegistry()
+	}
+
 }
 
 // Configuration is configuration strcut refects the config.json

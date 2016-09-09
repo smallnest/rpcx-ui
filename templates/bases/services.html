@@ -15,7 +15,7 @@
 
         <div class="row">
             <div class="col-lg-12 text-center">
-                <h1>Services list</h1>         
+                <h1>Services list</h1>
                 <table id="servicesTable" class="table table-striped table-bordered table-hover" cellspacing="0" width="100%">
                     <thead>
                         <tr>
@@ -32,23 +32,54 @@
                             <td>{{.Name}}</td>
                             <td>{{.Address}}</td>
                             <td>{{.Metadata}}</td>
-                            <td>{{.State}}</td>
                             <td>
-                                {{if eq .State "inactive"}} 
-                                <a href="/s/activate/{{.Id}}"><button type="button" class="btn btn-outline-warning">Activate</button></a>
-                                {{end}}
                                 {{if eq .State "active"}}
-                                <a href="/s/deactivate/{{.Id}}"><button type="button" class="btn btn-warning">Deactivate</button></a>
+                                <span class="label label-success">Active</span> 
+                                {{end}} 
+                                {{if eq .State "inactive"}}
+                                <span class="label label-warning">Inactive</span> 
                                 {{end}}
                             </td>
+                            <td>
+                                <button type="button" class="btn btn-primary" data-toggle="modal" 
+                                data-target="#modifyMetadata" data-metadata="{{.Metadata}}" data-sid="{{.Id}}">Modify</button>
+                                {{if eq .State "inactive"}}
+                                <a href="/s/activate/{{.Id}}"><button type="button" class="btn btn-warning">Activate</button></a>                                {{end}} {{if eq .State "active"}}
+                                <a href="/s/deactivate/{{.Id}}"><button type="button" class="btn btn-warning">Deactivate</button></a>                                {{end}}
+                            </td>
                         </tr>
-                        {{end}} 
-                       
+                        {{end}}
+
                     </tbody>
                 </table>
             </div>
         </div>
 
+    </div>
+
+
+    <div class="modal fade" id="modifyMetadata" tabindex="-1" role="dialog" aria-labelledby="modalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="modalLabel"></h4>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <label for="metadata-input" class="control-label">Metadata:</label>
+                            <input type="text" class="form-control" id="metadata-input">
+                            <input type="hidden" class="form-control" id="sid">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="save" data-dismiss="modal">Save</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     {{template "footer"}}
@@ -62,6 +93,21 @@
         $(document).ready(function() {
             $('#servicesTable').DataTable();
         } );
+
+        $('#modifyMetadata').on('show.bs.modal', function (event) { 
+            var button = $(event.relatedTarget)
+            var metadata = button.data('metadata') 
+            var modal = $(this)
+            modal.find('.modal-title').text('Modify metadata')
+            modal.find('.modal-body #metadata-input').val(metadata)
+            modal.find('#sid').val(button.data('sid') )
+        })
+
+        $('#save').click(function() { 
+            metadata = $("#metadata-input").val(); 
+            var root = location.protocol + '//' + location.host
+            window.location = root + "/s/m/" + $("#sid").val() + "?" + metadata
+        });
     </script>
 </body>
 
