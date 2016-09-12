@@ -53,8 +53,11 @@ func (r *ZooKeeperRegistry) fetchServices() []*Service {
 
 			v, err := url.ParseQuery(metadata)
 			state := "n/a"
-			if err == nil && v.Get("state") != "" {
+			if err == nil {
 				state = v.Get("state")
+				if state == "" {
+					state = "active"
+				}
 			}
 
 			id := base64.StdEncoding.EncodeToString([]byte(s + "@" + ep))

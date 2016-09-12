@@ -1,0 +1,9 @@
+{
+  "registry_type": "zookeeper",
+  "registry_url": "localhost:2181",
+  "service_base_url":"/rpcx",
+  "host": "0.0.0.0",
+  "port": 8972,
+  "user": "admin",
+  "password": "admin"
+}

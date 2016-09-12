@@ -27,6 +27,8 @@ func loadConfig() {
 
 	if serverConfig.RegistryType == "zookeeper" {
 		reg = &ZooKeeperRegistry{}
+	} else if serverConfig.RegistryType == "etcd" {
+		reg = &EtcdRegistry{}
 	}
 
 	if reg != nil {

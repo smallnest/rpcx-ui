@@ -2,8 +2,11 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -42,7 +45,7 @@ func init() {
 	}
 }
 
-func renderTemplate(w http.ResponseWriter, name string, data map[string]interface{}) error {
+func renderTemplate(w http.ResponseWriter, name string, data interface{}) error {
 	// Ensure the template exists in the map.
 	tmpl, ok := templates[name]
 	if !ok {
@@ -57,16 +60,38 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/services", http.StatusFound)
 	})
-	http.HandleFunc("/services", servicesHandler)
-	http.HandleFunc("/s/deactivate/", deactivateHandler)
-	http.HandleFunc("/s/activate/", activateHandler)
-	http.HandleFunc("/s/m/", modifyHandler)
-	http.HandleFunc("/hosts", hostsHandler)
+	http.HandleFunc("/services", recoverWrapper(servicesHandler))
+	http.HandleFunc("/s/deactivate/", recoverWrapper(deactivateHandler))
+	http.HandleFunc("/s/activate/", recoverWrapper(activateHandler))
+	http.HandleFunc("/s/m/", recoverWrapper(modifyHandler))
+	http.HandleFunc("/registry", recoverWrapper(registryHandler))
 
 	fs := http.FileServer(http.Dir("web"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	http.ListenAndServe(serverConfig.Host+":"+strconv.Itoa(serverConfig.Port), nil)
+}
+
+func recoverWrapper(h func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if re := recover(); re != nil {
+				var err error
+				fmt.Println("Recovered in registryHandler", re)
+				switch t := re.(type) {
+				case string:
+					err = errors.New(t)
+				case error:
+					err = t
+				default:
+					err = errors.New("Unknown error")
+				}
+				w.WriteHeader(http.StatusOK)
+				renderTemplate(w, "error.html", err.Error())
+			}
+		}()
+		h(w, r)
+	}
 }
 
 func servicesHandler(w http.ResponseWriter, r *http.Request) {
@@ -121,9 +146,37 @@ func modifyHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/services", http.StatusFound)
 }
 
-func hostsHandler(w http.ResponseWriter, r *http.Request) {
+func registryHandler(w http.ResponseWriter, r *http.Request) {
+	oldConfig := serverConfig
+	defer func() {
+		if re := recover(); re != nil {
+			bytes, err := json.MarshalIndent(&oldConfig, "", "\t")
+			if err == nil {
+				err = ioutil.WriteFile("./config.json", bytes, 0644)
+				loadConfig()
+			}
 
-	renderTemplate(w, r.URL.Path[1:]+".html", nil)
+			panic(re)
+		}
+	}()
+
+	if r.Method == "POST" {
+		registryType := r.FormValue("registry_type")
+		registryURL := r.FormValue("registry_url")
+		basePath := r.FormValue("base_path")
+
+		serverConfig.RegistryType = registryType
+		serverConfig.RegistryURL = registryURL
+		serverConfig.ServiceBaseURL = basePath
+
+		bytes, err := json.MarshalIndent(&serverConfig, "", "\t")
+		if err == nil {
+			err = ioutil.WriteFile("./config.json", bytes, 0644)
+			loadConfig()
+		}
+	}
+
+	renderTemplate(w, r.URL.Path[1:]+".html", serverConfig)
 }
 
 type Registry interface {

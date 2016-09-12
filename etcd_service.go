@@ -37,14 +37,18 @@ func (r *EtcdRegistry) fetchServices() []*Service {
 			for _, n := range resp.Node.Nodes {
 				for _, ep := range n.Nodes {
 
+					serviceName := strings.TrimPrefix(n.Key, serverConfig.ServiceBaseURL+"/")
+					serviceAddr := strings.TrimPrefix(ep.Key, n.Key+"/")
 					v, err := url.ParseQuery(ep.Value)
 					state := "n/a"
-					if err == nil && v.Get("state") != "" {
+					if err == nil {
 						state = v.Get("state")
+						if state == "" {
+							state = "active"
+						}
 					}
-
-					id := base64.StdEncoding.EncodeToString([]byte(n.Key + "@" + ep.Key))
-					service := &Service{Id: id, Name: n.Key, Address: ep.Key, Metadata: ep.Value, State: state}
+					id := base64.StdEncoding.EncodeToString([]byte(serviceName + "@" + serviceAddr))
+					service := &Service{Id: id, Name: serviceName, Address: serviceAddr, Metadata: ep.Value, State: state}
 					services = append(services, service)
 				}
 			}
