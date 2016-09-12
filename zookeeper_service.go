@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -39,8 +40,17 @@ func (r *ZooKeeperRegistry) fetchServices() []*Service {
 	for _, s := range zkServices {
 		endpoints, _, _ := c.Children(serverConfig.ServiceBaseURL + "/" + s)
 		for _, ep := range endpoints {
-			bytes, _, _ := c.Get(serverConfig.ServiceBaseURL + "/" + s + "/" + ep)
+			bytes, _, err := c.Get(serverConfig.ServiceBaseURL + "/" + s + "/" + ep)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
 			metadata := string(bytes)
+			if metadata == "0" {
+				continue
+			}
+
 			v, err := url.ParseQuery(metadata)
 			state := "n/a"
 			if err == nil && v.Get("state") != "" {
@@ -69,7 +79,11 @@ func (r *ZooKeeperRegistry) deactivateService(name, address string) error {
 		return errors.New("base path: " + serverConfig.ServiceBaseURL + " doesn't exist")
 	}
 
-	bytes, stat, _ := c.Get(serverConfig.ServiceBaseURL + "/" + name + "/" + address)
+	bytes, stat, err := c.Get(serverConfig.ServiceBaseURL + "/" + name + "/" + address)
+	if err != nil {
+		return err
+	}
+
 	metadata := string(bytes)
 	v, err := url.ParseQuery(metadata)
 	v.Set("state", "inactive")
