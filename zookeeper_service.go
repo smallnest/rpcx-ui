@@ -37,6 +37,7 @@ func (r *ZooKeeperRegistry) fetchServices() []*Service {
 
 	var services []*Service
 	zkServices, _, _ := c.Children(serverConfig.ServiceBaseURL)
+
 	for _, s := range zkServices {
 		endpoints, _, _ := c.Children(serverConfig.ServiceBaseURL + "/" + s)
 		for _, ep := range endpoints {
@@ -53,15 +54,18 @@ func (r *ZooKeeperRegistry) fetchServices() []*Service {
 
 			v, err := url.ParseQuery(metadata)
 			state := "n/a"
+			group := ""
 			if err == nil {
 				state = v.Get("state")
 				if state == "" {
 					state = "active"
 				}
+
+				group = v.Get("group")
 			}
 
 			id := base64.StdEncoding.EncodeToString([]byte(s + "@" + ep))
-			service := &Service{Id: id, Name: s, Address: ep, Metadata: metadata, State: state}
+			service := &Service{ID: id, Name: s, Address: ep, Metadata: metadata, State: state, Group: group}
 
 			services = append(services, service)
 		}

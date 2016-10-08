@@ -22,6 +22,7 @@
                         <tr>
                             <th>Name</th>
                             <th>Address</th>
+                            <th>Group</th>
                             <th>Metadata</th>
                             <th>State</th>
                             <th>Operation</th>
@@ -32,6 +33,7 @@
                         <tr>
                             <td>{{.Name}}</td>
                             <td>{{.Address}}</td>
+                            <td>{{.Group}}</td>
                             <td>{{.Metadata}}</td>
                             <td>
                                 {{if eq .State "active"}}
@@ -43,10 +45,10 @@
                             </td>
                             <td>
                                 <button type="button" class="btn btn-primary" data-toggle="modal" 
-                                data-target="#modifyMetadata" data-metadata="{{.Metadata}}" data-sid="{{.Id}}">Modify</button>
+                                data-target="#modifyMetadata" data-metadata="{{.Metadata}}" data-sid="{{.ID}}">Modify</button>
                                 {{if eq .State "inactive"}}
-                                <a href="/s/activate/{{.Id}}"><button type="button" class="btn btn-warning">Activate</button></a>                                {{end}} {{if eq .State "active"}}
-                                <a href="/s/deactivate/{{.Id}}"><button type="button" class="btn btn-warning">Deactivate</button></a>                                {{end}}
+                                <a href="/s/activate/{{.ID}}"><button type="button" class="btn btn-warning">Activate</button></a>                                {{end}} {{if eq .State "active"}}
+                                <a href="/s/deactivate/{{.ID}}"><button type="button" class="btn btn-warning">Deactivate</button></a>                                {{end}}
                             </td>
                         </tr>
                         {{end}}

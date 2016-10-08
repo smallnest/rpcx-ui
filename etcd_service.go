@@ -41,14 +41,16 @@ func (r *EtcdRegistry) fetchServices() []*Service {
 					serviceAddr := strings.TrimPrefix(ep.Key, n.Key+"/")
 					v, err := url.ParseQuery(ep.Value)
 					state := "n/a"
+					group := ""
 					if err == nil {
 						state = v.Get("state")
 						if state == "" {
 							state = "active"
 						}
+						group = v.Get("group")
 					}
 					id := base64.StdEncoding.EncodeToString([]byte(serviceName + "@" + serviceAddr))
-					service := &Service{Id: id, Name: serviceName, Address: serviceAddr, Metadata: ep.Value, State: state}
+					service := &Service{ID: id, Name: serviceName, Address: serviceAddr, Metadata: ep.Value, State: state, Group: group}
 					services = append(services, service)
 				}
 			}

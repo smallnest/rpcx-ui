@@ -189,9 +189,10 @@ type Registry interface {
 
 // Service is a service endpoint
 type Service struct {
-	Id       string
+	ID       string
 	Name     string
 	Address  string
 	Metadata string
 	State    string
+	Group    string
 }
