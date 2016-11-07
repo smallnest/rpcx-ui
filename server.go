@@ -12,9 +12,16 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/gorilla/securecookie"
+	"github.com/gorilla/sessions"
 )
 
+var store = sessions.NewCookieStore(securecookie.GenerateRandomKey(32))
+
 var templates map[string]*template.Template
+var loginBytes, _ = ioutil.ReadFile("./templates/login.html")
+var loginTemp, _ = template.New("login").Parse(string(loginBytes))
 
 // Load templates on program initialisation
 func init() {
@@ -57,19 +64,61 @@ func renderTemplate(w http.ResponseWriter, name string, data interface{}) error 
 }
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/services", http.StatusFound)
+	http.HandleFunc("/logout", func(rw http.ResponseWriter, req *http.Request) {
+		session, _ := store.Get(req, "gosessionid")
+		session.Options = &sessions.Options{MaxAge: -1, Path: "/"}
+		session.Save(req, rw)
+		http.Redirect(rw, req, "/", http.StatusFound)
 	})
-	http.HandleFunc("/services", recoverWrapper(servicesHandler))
-	http.HandleFunc("/s/deactivate/", recoverWrapper(deactivateHandler))
-	http.HandleFunc("/s/activate/", recoverWrapper(activateHandler))
-	http.HandleFunc("/s/m/", recoverWrapper(modifyHandler))
-	http.HandleFunc("/registry", recoverWrapper(registryHandler))
+
+	http.HandleFunc("/", authWrapper(recoverWrapper(indexHandler)))
+
+	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+
+		var errMsg = ""
+		if r.Method == http.MethodPost {
+			username := r.FormValue("username")
+			password := r.FormValue("password")
+
+			if username == serverConfig.User && password == serverConfig.Password {
+				session, _ := store.Get(r, "gosessionid")
+				session.Values["userLogin"] = username
+				session.Save(r, w)
+				http.Redirect(w, r, "/services", http.StatusFound)
+				return
+			}
+
+			errMsg = "username or password is not correct"
+			loginTemp.ExecuteTemplate(w, "login", errMsg)
+		}
+
+		if r.Method == http.MethodGet {
+			loginTemp.ExecuteTemplate(w, "login", nil)
+		}
+	})
+
+	http.HandleFunc("/services", authWrapper(recoverWrapper(servicesHandler)))
+	http.HandleFunc("/s/deactivate/", authWrapper(recoverWrapper(deactivateHandler)))
+	http.HandleFunc("/s/activate/", authWrapper(recoverWrapper(activateHandler)))
+	http.HandleFunc("/s/m/", authWrapper(recoverWrapper(modifyHandler)))
+	http.HandleFunc("/registry", authWrapper(recoverWrapper(registryHandler)))
 
 	fs := http.FileServer(http.Dir("web"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	http.ListenAndServe(serverConfig.Host+":"+strconv.Itoa(serverConfig.Port), nil)
+}
+
+func authWrapper(h func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, _ := store.Get(r, "gosessionid")
+		username := session.Values["userLogin"]
+		if username != nil {
+			h(w, r)
+		} else {
+			http.Redirect(w, r, "/login", http.StatusFound)
+		}
+	}
 }
 
 func recoverWrapper(h func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
@@ -92,6 +141,10 @@ func recoverWrapper(h func(w http.ResponseWriter, r *http.Request)) func(w http.
 		}()
 		h(w, r)
 	}
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/services", http.StatusFound)
 }
 
 func servicesHandler(w http.ResponseWriter, r *http.Request) {

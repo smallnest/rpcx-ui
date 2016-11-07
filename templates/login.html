@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="rpcx web ui">
+
+    <title>rpcx Manager - login</title>
+    <link href="/static/css/default.bootstrap.min.css" rel="stylesheet" id="themelink">
+
+    <style>
+        #login {
+                margin-top: 100px;
+        }
+
+        #login .center {
+                text-align: center;
+        }
+
+        #login .login {
+            
+            max-width: 400px;
+            margin: 35px auto;
+        }
+
+        #login .login-form{
+           padding:20px 25px 10px 25px;
+        }
+    </style>
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+</head>
+
+<body>
+
+<div id="login" class="container center">
+  <div class="row">
+    <div class="col-md-12">
+      {{if .}}
+      <div class="alert alert-danger" role="alert">{{.}}</div>
+      {{end}}
+      <div class="login well well-sm">
+        <form action="/login" style="" class="login-form" id="UserLoginForm" method="post" accept-charset="utf-8">
+          <div class="form-group">
+            <div class="input-group">
+              <span class="input-group-addon"><i class="glyphicon glyphicon-user"></i></span>
+              <input name="username" required="required" class="form-control" placeholder="Username" maxlength="255" type="text" id="username"> 
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="input-group">
+              <span class="input-group-addon"><i class="glyphicon glyphicon-lock"></i></span>
+              <input name="password" required="required" class="form-control" placeholder="Password" type="password" id="password"> 
+            </div>
+          </div>         
+          <div class="form-group">
+            <input class="btn btn-primary btn-lg btn-block" type="submit" value="Sign in"> 
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <script type="text/javascript">
+        function changeTheme(themeName) {
+            var oldlink = document.getElementById("themelink");
+            var cssFile = "/static/css/" + themeName + ".bootstrap.min.css"
+            oldlink.setAttribute("href", cssFile);
+        }
+
+
+        function readCookie(name) {
+            var nameEQ = name + "=";
+            var ca = document.cookie.split(';');
+            for(var i=0;i < ca.length;i++) {
+                var c = ca[i];
+                while (c.charAt(0)==' ') c = c.substring(1,c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+            }
+            return null;
+        }
+
+        
+
+        document.addEventListener('DOMContentLoaded',function(){
+            if(readCookie('theme')){
+                changeTheme(readCookie('theme'))   
+            } 
+        })
+   </script>
+</body>
+
+</html>
