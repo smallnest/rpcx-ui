@@ -47,8 +47,8 @@
                                 <button type="button" class="btn btn-primary" data-toggle="modal" 
                                 data-target="#modifyMetadata" data-metadata="{{.Metadata}}" data-sid="{{.ID}}">Modify</button>
                                 {{if eq .State "inactive"}}
-                                <a href="/s/activate/{{.ID}}"><button type="button" class="btn btn-warning">Activate</button></a>                                {{end}} {{if eq .State "active"}}
-                                <a href="/s/deactivate/{{.ID}}"><button type="button" class="btn btn-warning">Deactivate</button></a>                                {{end}}
+                                <a href="/s/activate/{{.ID}}" onclick="javascript:return confirm('Are you sure to activate?')" ><button type="button" class="btn btn-warning">Activate</button></a>                                {{end}} {{if eq .State "active"}}
+                                <a href="/s/deactivate/{{.ID}}" onclick="javascript:return confirm('Are you sure to activate?')" ><button type="button" class="btn btn-warning">Deactivate</button></a>                                {{end}}
                             </td>
                         </tr>
                         {{end}}
