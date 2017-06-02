@@ -42,5 +42,3 @@ Put `rpcx-ui`、`config.json`、`web`、`templates` in a directory, for example,
 and then run `./rpcx-ui` to start this http server.
 
 You can visit `http://localhost:8972/` to visit this GUI.
-
-
