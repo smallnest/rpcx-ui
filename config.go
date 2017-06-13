@@ -25,16 +25,19 @@ func loadConfig() {
 	json.Unmarshal(file, &serverConfig)
 	fmt.Println("succeeded to read the config")
 
-	if serverConfig.RegistryType == "zookeeper" {
+	switch serverConfig.RegistryType {
+	case "zookeeper":
 		reg = &ZooKeeperRegistry{}
-	} else if serverConfig.RegistryType == "etcd" {
+	case "etcd":
 		reg = &EtcdRegistry{}
+	case "consul":
+		reg = &ConsulRegistry{}
+	default:
+		fmt.Printf("unsupported registry: %s\n", serverConfig.RegistryType)
+		os.Exit(2)
 	}
 
-	if reg != nil {
-		reg.initRegistry()
-	}
-
+	reg.initRegistry()
 }
 
 // Configuration is configuration strcut refects the config.json
