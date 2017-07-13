@@ -37,11 +37,15 @@ func (r *EtcdRegistry) fetchServices() []*Service {
 	var services []*Service
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeOut)
 	defer cancel()
-	resp, err := r.Cli.Get(ctx, serverConfig.ServiceBaseURL, clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
+	// resp, err := r.Cli.Get(ctx, serverConfig.ServiceBaseURL, clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
+
+	resp, err := r.Cli.Get(ctx, serverConfig.ServiceBaseURL, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
+
 	if err != nil {
 		log.Println("fetchServices error: ", err.Error())
 		return nil
 	}
+
 	for _, value := range resp.Kvs {
 		fmt.Println("etcd v3 values: %v", value)
 		key := string(value.Key[:])
