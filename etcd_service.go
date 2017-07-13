@@ -39,6 +39,10 @@ func (r *EtcdRegistry) fetchServices() []*Service {
 	defer cancel()
 	// resp, err := r.Cli.Get(ctx, serverConfig.ServiceBaseURL, clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
 
+	if !strings.HasSuffix(serverConfig.ServiceBaseURL, "/") {
+		serverConfig.ServiceBaseURL = serverConfig.ServiceBaseURL + "/"
+	}
+
 	resp, err := r.Cli.Get(ctx, serverConfig.ServiceBaseURL, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
 
 	if err != nil {
@@ -49,7 +53,7 @@ func (r *EtcdRegistry) fetchServices() []*Service {
 	for _, value := range resp.Kvs {
 		fmt.Println("etcd v3 values: %v", value)
 		key := string(value.Key[:])
-		serviceName := strings.TrimPrefix(key, serverConfig.ServiceBaseURL+"/")
+		serviceName := strings.TrimPrefix(key, serverConfig.ServiceBaseURL)
 		var serviceAddr string
 		fields := strings.Split(key, "/")
 		if fields != nil && len(fields) > 1 {
