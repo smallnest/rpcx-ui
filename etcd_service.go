@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"path"
 
 	"github.com/coreos/etcd/clientv3"
 )
@@ -53,7 +54,8 @@ func (r *EtcdRegistry) fetchServices() []*Service {
 	for _, value := range resp.Kvs {
 		fmt.Println("etcd v3 values: %v", value)
 		key := string(value.Key[:])
-		serviceName := strings.TrimPrefix(key, serverConfig.ServiceBaseURL)
+		i := strings.LastIndex(key, "/")
+		serviceName := strings.TrimPrefix(key, serverConfig.ServiceBaseURL)[0:i-1]
 		var serviceAddr string
 		fields := strings.Split(key, "/")
 		if fields != nil && len(fields) > 1 {
@@ -82,7 +84,7 @@ func (r *EtcdRegistry) fetchServices() []*Service {
 }
 
 func (r *EtcdRegistry) deactivateService(name, address string) error {
-	key := serverConfig.ServiceBaseURL + "/" + name + "/" + address
+	key := path.Join(serverConfig.ServiceBaseURL, name, address)
 
 	resp, err := r.Cli.Get(context.Background(), key)
 
@@ -109,7 +111,7 @@ func (r *EtcdRegistry) deactivateService(name, address string) error {
 }
 
 func (r *EtcdRegistry) activateService(name, address string) error {
-	key := serverConfig.ServiceBaseURL + "/" + name + "/" + address
+	key := path.Join(serverConfig.ServiceBaseURL, name, address)
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeOut)
 	defer cancel()
@@ -135,7 +137,7 @@ func (r *EtcdRegistry) activateService(name, address string) error {
 }
 
 func (r *EtcdRegistry) updateMetadata(name, address string, metadata string) error {
-	key := serverConfig.ServiceBaseURL + "/" + name + "/" + address
+	key := path.Join(serverConfig.ServiceBaseURL, name, address)
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeOut)
 	defer cancel()
