@@ -1,83 +1,78 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
-	"fmt"
 	"log"
 	"net/url"
-	"strings"
-	"time"
 	"path"
+	"strings"
 
-	"github.com/coreos/etcd/clientv3"
-)
-
-var (
-	requestTimeOut = 10 * time.Second
+	"github.com/docker/libkv"
+	kvstore "github.com/docker/libkv/store"
+	"github.com/docker/libkv/store/etcd"
 )
 
 type EtcdRegistry struct {
-	Cli *clientv3.Client
+	kv kvstore.Store
 }
 
 func (r *EtcdRegistry) initRegistry() {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   strings.Split(serverConfig.RegistryURL, ","),
-		DialTimeout: 5 * time.Second,
-	})
+	etcd.Register()
 
+	kv, err := libkv.NewStore(kvstore.ETCD, []string{serverConfig.RegistryURL}, nil)
 	if err != nil {
-		panic(err)
+		log.Printf("cannot create etcd registry: %v", err)
+		return
 	}
-	r.Cli = cli
+	r.kv = kv
+
 	return
 }
 
 func (r *EtcdRegistry) fetchServices() []*Service {
 	var services []*Service
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeOut)
-	defer cancel()
-	// resp, err := r.Cli.Get(ctx, serverConfig.ServiceBaseURL, clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
-
-	if !strings.HasSuffix(serverConfig.ServiceBaseURL, "/") {
-		serverConfig.ServiceBaseURL = serverConfig.ServiceBaseURL + "/"
-	}
-
-	resp, err := r.Cli.Get(ctx, serverConfig.ServiceBaseURL, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
-
+	kvs, err := r.kv.List(serverConfig.ServiceBaseURL)
 	if err != nil {
-		log.Println("fetchServices error: ", err.Error())
-		return nil
+		log.Printf("failed to list services %s: %v", serverConfig.ServiceBaseURL, err)
+		return services
 	}
 
-	for _, value := range resp.Kvs {
-		fmt.Println("etcd v3 values: %v", value)
-		key := string(value.Key[:])
-		i := strings.LastIndex(key, "/")
-		serviceName := strings.TrimPrefix(key, serverConfig.ServiceBaseURL)[0:i-1]
-		var serviceAddr string
-		fields := strings.Split(key, "/")
-		if fields != nil && len(fields) > 1 {
-			serviceAddr = fields[len(fields)-1]
-		}
-		v, err := url.ParseQuery(string(value.Value[:]))
+	for _, value := range kvs {
+
+		nodes, err := r.kv.List(value.Key)
 		if err != nil {
-			log.Println("etcd value parse failed. error: ", err.Error())
+			log.Printf("failed to list %s: %v", value.Key, err)
 			continue
 		}
-		state := "n/a"
-		group := ""
-		if err == nil {
-			state = v.Get("state")
-			if state == "" {
-				state = "active"
+
+		for _, n := range nodes {
+			key := string(n.Key[:])
+			i := strings.LastIndex(key, "/")
+			serviceName := strings.TrimPrefix(key[0:i], serverConfig.ServiceBaseURL)
+			var serviceAddr string
+			fields := strings.Split(key, "/")
+			if fields != nil && len(fields) > 1 {
+				serviceAddr = fields[len(fields)-1]
 			}
-			group = v.Get("group")
+			v, err := url.ParseQuery(string(n.Value[:]))
+			if err != nil {
+				log.Println("etcd value parse failed. error: ", err.Error())
+				continue
+			}
+			state := "n/a"
+			group := ""
+			if err == nil {
+				state = v.Get("state")
+				if state == "" {
+					state = "active"
+				}
+				group = v.Get("group")
+			}
+			id := base64.StdEncoding.EncodeToString([]byte(serviceName + "@" + serviceAddr))
+			service := &Service{ID: id, Name: serviceName, Address: serviceAddr, Metadata: string(n.Value[:]), State: state, Group: group}
+			services = append(services, service)
 		}
-		id := base64.StdEncoding.EncodeToString([]byte(serviceName + "@" + serviceAddr))
-		service := &Service{ID: id, Name: serviceName, Address: serviceAddr, Metadata: string(value.Value[:]), State: state, Group: group}
-		services = append(services, service)
+
 	}
 
 	return services
@@ -86,25 +81,21 @@ func (r *EtcdRegistry) fetchServices() []*Service {
 func (r *EtcdRegistry) deactivateService(name, address string) error {
 	key := path.Join(serverConfig.ServiceBaseURL, name, address)
 
-	resp, err := r.Cli.Get(context.Background(), key)
+	kv, err := r.kv.Get(key)
 
 	if err != nil {
 		return err
 	}
 
-	for _, value := range resp.Kvs {
-		v, err := url.ParseQuery(string(value.Value[:]))
-		if err != nil {
-			log.Println("etcd value parse failed. err ", err.Error())
-			continue
-		}
-		v.Set("state", "inactive")
-		ctx, cancel := context.WithTimeout(context.Background(), requestTimeOut)
-		defer cancel()
-		_, err = r.Cli.Put(ctx, key, v.Encode())
-		if err != nil {
-			log.Println("etcd set failed, err : ", err.Error())
-		}
+	v, err := url.ParseQuery(string(kv.Value[:]))
+	if err != nil {
+		log.Println("etcd value parse failed. err ", err.Error())
+		return err
+	}
+	v.Set("state", "inactive")
+	err = r.kv.Put(kv.Key, []byte(v.Encode()), &kvstore.WriteOptions{IsDir: false})
+	if err != nil {
+		log.Println("etcd set failed, err : ", err.Error())
 	}
 
 	return err
@@ -112,25 +103,17 @@ func (r *EtcdRegistry) deactivateService(name, address string) error {
 
 func (r *EtcdRegistry) activateService(name, address string) error {
 	key := path.Join(serverConfig.ServiceBaseURL, name, address)
+	kv, err := r.kv.Get(key)
 
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeOut)
-	defer cancel()
-	resp, err := r.Cli.Get(ctx, key)
+	v, err := url.ParseQuery(string(kv.Value[:]))
 	if err != nil {
+		log.Println("etcd value parse failed. err ", err.Error())
 		return err
 	}
-
-	for _, value := range resp.Kvs {
-		v, err := url.ParseQuery(string(value.Value[:]))
-		if err != nil {
-			log.Println("etcd value parse failed. err ", err.Error())
-			continue
-		}
-		v.Set("state", "active")
-		_, err = r.Cli.Put(ctx, key, v.Encode())
-		if err != nil {
-			log.Println("etcdv3 put failed. err: ", err.Error())
-		}
+	v.Set("state", "active")
+	err = r.kv.Put(kv.Key, []byte(v.Encode()), &kvstore.WriteOptions{IsDir: false})
+	if err != nil {
+		log.Println("etcdv3 put failed. err: ", err.Error())
 	}
 
 	return err
@@ -138,9 +121,6 @@ func (r *EtcdRegistry) activateService(name, address string) error {
 
 func (r *EtcdRegistry) updateMetadata(name, address string, metadata string) error {
 	key := path.Join(serverConfig.ServiceBaseURL, name, address)
-
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeOut)
-	defer cancel()
-	_, err := r.Cli.Put(ctx, key, metadata)
+	err := r.kv.Put(key, []byte(metadata), &kvstore.WriteOptions{IsDir: false})
 	return err
 }

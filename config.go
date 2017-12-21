@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 )
 
 func init() {
@@ -37,6 +38,9 @@ func loadConfig() {
 		os.Exit(2)
 	}
 
+	if !strings.HasSuffix(serverConfig.ServiceBaseURL, "/") {
+		serverConfig.ServiceBaseURL += "/"
+	}
 	reg.initRegistry()
 }
 
