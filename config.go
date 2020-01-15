@@ -8,10 +8,6 @@ import (
 	"strings"
 )
 
-func init() {
-	loadConfig()
-}
-
 // Config parameters
 var serverConfig = Configuration{}
 var reg Registry
@@ -24,7 +20,7 @@ func loadConfig() {
 	}
 	//fmt.Printf("Loaded Config: \n%s\n", string(file))
 	json.Unmarshal(file, &serverConfig)
-	fmt.Println("succeeded to read the config")
+	fmt.Printf("succeeded to read the config: %s\n", *configFile)
 
 	switch serverConfig.RegistryType {
 	case "zookeeper":

@@ -68,6 +68,7 @@ func renderTemplate(w http.ResponseWriter, name string, data interface{}) error 
 
 func main() {
 	flag.Parse()
+	loadConfig()
 
 	http.HandleFunc("/logout", func(rw http.ResponseWriter, req *http.Request) {
 		session, _ := store.Get(req, "gosessionid")
