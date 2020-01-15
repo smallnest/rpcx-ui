@@ -17,7 +17,7 @@ var serverConfig = Configuration{}
 var reg Registry
 
 func loadConfig() {
-	file, e := ioutil.ReadFile("./config.json")
+	file, e := ioutil.ReadFile(*configFile)
 	if e != nil {
 		fmt.Printf("File error: %v\n", e)
 		os.Exit(1)

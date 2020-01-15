@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -16,6 +17,8 @@ import (
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
 )
+
+var configFile = flag.String("config", "./config.json", "config file")
 
 var store = sessions.NewCookieStore(securecookie.GenerateRandomKey(32))
 
@@ -64,6 +67,8 @@ func renderTemplate(w http.ResponseWriter, name string, data interface{}) error 
 }
 
 func main() {
+	flag.Parse()
+
 	http.HandleFunc("/logout", func(rw http.ResponseWriter, req *http.Request) {
 		session, _ := store.Get(req, "gosessionid")
 		session.Options = &sessions.Options{MaxAge: -1, Path: "/"}
