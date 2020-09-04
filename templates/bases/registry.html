@@ -31,6 +31,11 @@
                                 {{else}}
                                     <option>etcd</option>
                                 {{end}}
+                                {{if eq .RegistryType "etcdv3"}}
+                                    <option selected="selected">etcdv3</option>
+                                {{else}}
+                                    <option>etcdv3</option>
+                                {{end}}
                                 {{if eq .RegistryType "consul"}}
                                     <option selected="selected">consul</option>
                                 {{else}}
