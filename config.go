@@ -27,6 +27,8 @@ func loadConfig() {
 		reg = &ZooKeeperRegistry{}
 	case "etcd":
 		reg = &EtcdRegistry{}
+	case "etcdv3":
+		reg = &EtcdV3Registry{}
 	case "consul":
 		reg = &ConsulRegistry{}
 	default:
